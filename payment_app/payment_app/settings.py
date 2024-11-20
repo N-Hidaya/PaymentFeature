@@ -23,6 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-#x7get2rd)5g5($y82x$sv-z6$3hxy8k-81--s$vp_@(twe#-u'
 STRIPE_PUBLIC_KEY = 'PUBLIC_KEY'
 STRIPE_SECRET_KEY = 'SECRET_KEY'
+STRIPE_WEBHOOK_SECRET = ''
 
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -40,7 +41,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'payments'
+    'payments',
+    'products'
 ]
 
 MIDDLEWARE = [
@@ -58,7 +60,7 @@ ROOT_URLCONF = 'payment_app.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR/'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
