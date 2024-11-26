@@ -17,11 +17,13 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from products.views import (checkoutSessionView,
-                            ProductLandingPage, SuccessView, CancelView)
+                            ProductLandingPage, SuccessView, CancelView, webhook_view, StripeIntent)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('success/', SuccessView.as_view(), name='success'),
+    path('create-payment-intent/<pk>/', StripeIntent.as_view(), name='create-payment-intent'),
+    path('webhooks/stripe/', webhook_view, name='stripe-webhook'),
     path('cancel/', CancelView.as_view(), name='cancel'),
     path('', ProductLandingPage.as_view(), name='landing-page'),
     path('checkout-session/<pk>/', checkoutSessionView.as_view(), name='checkout-session')

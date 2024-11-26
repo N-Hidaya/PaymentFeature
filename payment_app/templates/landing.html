@@ -15,13 +15,34 @@
         </div>
       </div>
         <button type="button" id="checkout-button">Checkout</button>
+        <hr />
+        <h2>Checkout using custom payment flow</h2>
+
+        <form id="payment-form">
+          <input type="text" id="email" placeholder="Email Address" />
+          <div id="card-element">
+            <button id="submit">
+              <div id="spinner" class="spinner hidden"></div>
+              <span id="button-text">Pay</span>
+
+            </button>
+            <p id="card-error" role="alert"></p>
+            <p class="result-message hidden">
+              Payment success. See result in your <a href="" target="_blank">Stripe dashboard.</a>
+              Refresh the page to pay again. 
+            </p>
+
+          </div>
+
+        </form>
+
     </section>
     {% csrf_token %}
   </body>
   <script type="text/javascript">
     const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-    var stripe = Stripe('{{ STRIPE_PUBLIC_KEY }}')
-    var checkoutButton = document.getElementById('checkout-button')
+    var stripe = Stripe('{{ STRIPE_PUBLIC_KEY }}');
+    var checkoutButton = document.getElementById('checkout-button');
     checkoutButton.addEventListener('click', function(){
 
         fetch("{% url 'checkout-session' product.id %}", {
@@ -40,7 +61,113 @@
             
         }).catch(function (error){
             console.error("Error:",error);
+        });
+    });
+
+   
+    //Disable button until we have stripe setup on page
+    document.querySelector("button").disabled = true;
+
+    var elements = stripe.elements();
+      var style = {
+        base: {
+          color: "#32325d",
+          fontFamily: "Arial, sans-serif",
+          fontSmoothing: "antialiased",
+          fontSize: "16px",
+          "::placeholder": {
+            color: "#32325d"
+          }
+        },
+        invalid: {
+          fontFamily: "Arial, sans-serif",
+          color: "#fa755a",
+          iconColor: "#fa755a"
+        }
+      };
+      var card = elements.create("card", {style: style});
+      //Stripe injects iframe into DOM
+      card.mount("#card-element");
+      card.on("change", function (event) {
+        //Disable Pay button when no details
+        document.querySelector("button").disabled = event.empty;
+        document.querySelector("#card-error").textContent = event.error ? event.error.message : ""
+      });
+      var form = document.getElementById("payment-form");
+      form.addEventListener("submit", function(event) {
+        event.preventDefault();
+        fetch("{% url 'create-payment-intent' product.id %}", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            'X-CSRFToken': csrftoken
+          },
+          body: JSON.stringify({
+            email: document.getElementById('email').value
+          })
         })
-    })
+        .then(function(result) {
+          return result.json();
+        })
+        .then(function(data) {
+          //Complete payment when submit button clicked
+            payWithCard(stripe, card, data.clientSecret);
+        });
+      });
+
+    
+
+    //Calls Stripe.confirmCardPayment
+    //If card requires auth, Stripe shows popup without leaving page
+    var payWithCard = function(stripe, card, clientSecret) {
+      loading(true);
+      stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: card
+        }
+      })
+      .then(function(result) {
+        if(result.error) {
+          showError(result.error.message);
+        } else {
+          orderComplete(result.paymentIntent.id);
+        }
+      });
+    };
+
+    //Shows success message after payment complete
+    var orderComplete = function(paymentIntentId) {
+      loading(false);
+      document.querySelector(".result-message a")
+      .setAttribute("href","https://dashboard.stripe.com/test/payments/" + paymentIntentId);
+      document.querySelector(".result-message").classList.remove('hidden');
+      document.querySelector("button").disabled = true;
+    };
+
+    //Show customer error from Stripe if failed
+    var showError = function(errorMsgText) {
+      loading(false);
+      var errorMsg = document.querySelector("#card-error");
+      errorMsg.textContent = errorMsgText;
+      setTimeout(function() {
+        errorMsg.textContent = "";
+      }, 4000);
+    };
+
+    //Show a spinner on submission
+    var loading = function(isLoading) {
+      if (isLoading) {
+        //Disable a button and show a spinner
+        document.querySelector("button").disabled = true;
+        document.querySelector("#spinner").classList.remove("hidden");
+        document.querySelector("#button-text").classList.add("hidden");
+      } else {
+        document.querySelector("button").disabled = false;
+        document.querySelector("#spinner").classList.add("hidden");
+        document.querySelector("#button-text").classList.remove("hidden");
+      }
+    }
+
+
   </script>
 </html>
